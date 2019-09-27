@@ -79,13 +79,12 @@ namespace Airline_app
                 {
                     if (multiCellBuffer.order != null)
                     {
-                        if(multiCellBuffer.order.getAmount() != 0)
-                        {
-                            Console.WriteLine("Airline is Processing Order for Travel Agency {0} ------------------------------", multiCellBuffer.order.getSender());
-                        }
-                    
                         multiCellBuffer.getOneCell();
-                    
+
+                        if (multiCellBuffer.order.getAmount() != 0)
+                        {
+                            Console.WriteLine("--------------------------------------------------- Airline is Processing Order for Travel Agency {0}", multiCellBuffer.order.getSender());
+                        }
                     }
                 }
 
@@ -121,7 +120,7 @@ namespace Airline_app
                     if (onSaleFlag == 1)
                     {
 
-                        Console.WriteLine("--------------------------------------- Travel Agency {0} is Making an order for price {1}", Thread.CurrentThread.Name, p);
+                        Console.WriteLine("--------------------------------------------------- Travel Agency {0} is Making an order for price {1}", Thread.CurrentThread.Name, p);
                         order.setAmount(2);
                         order.setCardNumber(rng.Next(4000, 7000));
                         order.setSender(Thread.CurrentThread.Name);
@@ -211,7 +210,7 @@ namespace Airline_app
                 _pool.WaitOne();
                 this.order = order;
 
-                Console.WriteLine("ORDER POOL IS NOW OCCUPIED BY TRAVEL AGENCY {0}", Thread.CurrentThread.Name); //Should increase semaphore by 1
+                Console.WriteLine("---------------- ORDER POOL IS NOW OCCUPIED BY TRAVEL AGENCY {0} ------------------", Thread.CurrentThread.Name); //Should increase semaphore by 1
                 _pool.Release();
 
 
@@ -225,7 +224,7 @@ namespace Airline_app
             //lock (order)
             //{
             
-                Console.WriteLine("AIRLINE HAS RECEIVED THE ORDER FOR TRAVEL AGENCY -------------------------------------{0}", order.getSender());
+                Console.WriteLine("--------------------------------------------------- AIRLINE HAS RECEIVED THE ORDER FOR TRAVEL AGENCY {0}", order.getSender());
                 
             
            // }
