@@ -6,11 +6,11 @@ namespace Airline_app
     public delegate void priceCutEvent(Int32 pr);
     class Program
     {
-       
+        public static Semaphore _pool;
 
         static void Main(string[] args)
         {
-           
+            _pool = new Semaphore(0, 2);
             MultiCellBuffer multiCellBuffer = new MultiCellBuffer();
             Airline airline = new Airline(multiCellBuffer); 
 
@@ -29,7 +29,10 @@ namespace Airline_app
                 travelAgencies[i].Name = (i + 1).ToString();
                 travelAgencies[i].Start();
             }
-            
+            Thread.Sleep(500);
+            _pool.Release(2);
+            Console.WriteLine("Main thread exits.");
+
 
         }
     }
@@ -49,6 +52,15 @@ namespace Airline_app
         public Int32 getPrice() {
             
             return chickenPrice;
+
+        }
+
+        public static void orderProcessing(Order order)
+        {
+            
+                Console.WriteLine("--------------------------------------------------- Order Processing Starting for Agency {0}", order.getSender());
+            
+           
 
         }
 
@@ -79,15 +91,19 @@ namespace Airline_app
                 {
                     if (multiCellBuffer.order != null)
                     {
-                        multiCellBuffer.getOneCell();
 
                         if (multiCellBuffer.order.getAmount() != 0)
                         {
                             Console.WriteLine("--------------------------------------------------- Airline is Processing Order for Travel Agency {0}", multiCellBuffer.order.getSender());
-                        }
-                    }
-                }
+                           // Thread link = new Thread(() => Airline.orderProcessing(multiCellBuffer.order));
+                           // link.Start();
 
+                        }
+                        multiCellBuffer.getOneCell();
+                    }
+                    multiCellBuffer.order = null;
+                }
+                
             }
         }
     }
@@ -126,7 +142,7 @@ namespace Airline_app
                         order.setSender(Thread.CurrentThread.Name);
                         multiCellBuffer.setOneCell(order);
                         onSaleFlag = 0;
-
+                      //  Monitor.Pulse(multiCellBuffer);
                     }
                 }  
 
@@ -137,17 +153,14 @@ namespace Airline_app
         public void ticketsOnSale(Int32 p)
         {  // Event handler
             //create order object to send all values through a buffer for the airline to process
-            //lock (multiCellBuffer)
-            //{
-            //    Order order = new Order();
-            //    order.setAmount(25);
-            //    multiCellBuffer.order = order;
-            //    multiCellBuffer.setOneCell(order);
-            //    Console.WriteLine("Travel Agency{0} tickets are on sale: as low as ${1} each", Thread.CurrentThread.Name, p);
-            //}
+            object box = onSaleFlag;
             Console.WriteLine("Travel Agency{0} tickets are on sale: as low as ${1} each", Thread.CurrentThread.Name, p);
-            onSaleFlag = 1;   
-           //How am i supposed to generate an order for a thread if the thread does not exist here>
+           // lock (multiCellBuffer)
+           // {
+                onSaleFlag = 1;
+           //     Monitor.Wait(multiCellBuffer);
+           // }
+             
         }
     }
 
@@ -193,42 +206,45 @@ namespace Airline_app
 
     public class MultiCellBuffer
     {
-        public static Semaphore _pool;
+        
         public Order order;
-
+        int counter = 0;
         public MultiCellBuffer()
         {
-            _pool = new Semaphore(0, 2);
-            
-            Console.WriteLine("Semaphore Released{0} **", _pool.Release(2));
+
         }
         
         public void setOneCell(Order order)
         {
             lock (order)
             {
-                _pool.WaitOne();
-                this.order = order;
-
-                Console.WriteLine("---------------- ORDER POOL IS NOW OCCUPIED BY TRAVEL AGENCY {0} ------------------", Thread.CurrentThread.Name); //Should increase semaphore by 1
-                _pool.Release();
-
-
+                if (Program._pool.WaitOne())
+                {
+                    this.order = order;
+                    Console.WriteLine("---------------- ORDER POOL IS NOW OCCUPIED BY TRAVEL AGENCY {0} ------------------", Thread.CurrentThread.Name); //Should increase semaphore by 1
+                  //  counter++;
+                }
 
             }
-            
+
         }
 
-        public Order getOneCell()
+        public void getOneCell()
         {
-            //lock (order)
-            //{
-            
-                Console.WriteLine("--------------------------------------------------- AIRLINE HAS RECEIVED THE ORDER FOR TRAVEL AGENCY {0}", order.getSender());
+            lock (order)
+            {
+             //   if(counter <= 1)
+              //  {
+                 //   counter--;
+                    Console.WriteLine("---------------- RELEASING SEMAPHORE {0} ------------------", Program._pool.Release());
+                    Console.WriteLine("--------------------------------------------------- AIRLINE HAS RECEIVED THE ORDER FOR TRAVEL AGENCY {0}", order.getSender());
+                    
+                   // Monitor.Pulse(order);
+                //}
                 
-            
-           // }
-            return order;
+
+            }
+            //return order;
 
 
         }
