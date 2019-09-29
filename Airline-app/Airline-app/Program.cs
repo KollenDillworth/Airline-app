@@ -7,16 +7,16 @@ namespace Airline_app
     class Program
     {
         public static Semaphore _pool;
-
+        public static int onSaleFlag = 0;
         static void Main(string[] args)
         {
             _pool = new Semaphore(0, 2);
             MultiCellBuffer multiCellBuffer = new MultiCellBuffer();
-            Airline airline = new Airline(multiCellBuffer); 
+            Airline airline = new Airline(multiCellBuffer);
 
-            Thread farmer = new Thread(new ThreadStart(airline.airlineFunc));
+            Thread airlineThread = new Thread(new ThreadStart(airline.airlineFunc));
 
-            farmer.Start();         // Start one farmer thread
+            airlineThread.Start();         // Start one farmer thread
 
             TravelAgency travelAgency = new TravelAgency(multiCellBuffer);
 
@@ -30,18 +30,18 @@ namespace Airline_app
                 travelAgencies[i].Start();
             }
             Thread.Sleep(500);
-            _pool.Release(2);
+            _pool.Release(2); //Opening up semaphore
             Console.WriteLine("Main thread exits.");
 
 
         }
     }
 
-    public class Airline //Consumer
+    public class Airline //Airline class
     {
         static Random rng = new Random();
         public static event priceCutEvent priceCut; // Define event
-        private static Int32 chickenPrice = 70;
+        private static Int32 chickenPrice = 50;
         private MultiCellBuffer multiCellBuffer;
 
         public Airline(MultiCellBuffer multiCellBuffer)
@@ -49,29 +49,40 @@ namespace Airline_app
             this.multiCellBuffer = multiCellBuffer;
         }
 
-        public Int32 getPrice() {
-            
+        public Int32 getPrice()
+        {
+
             return chickenPrice;
 
         }
 
-        public static void orderProcessing(Order order)
+        public static void orderProcessing(Order order, int price)
         {
-            
-                Console.WriteLine("--------------------------------------------------- Order Processing Starting for Agency {0}", order.getSender());
-            
-           
+            //Checking order, if credit card information is correct then process order, if not then reject  
+            if (order.getCardNumber() >= 5000 && order.getCardNumber() <= 7000)
+            {
+                double val = (double)order.getAmount() * (double)price;
+                Console.WriteLine("--------------------------------------------------- ORDER HAS BEEN PROCESSED SUCCCESSFULLY FOR AGENCY {0}. Card No: {1}. Tickets Purchased: {2}. Total Price: ${3}. At Price ${4} ea", order.getSender(), order.getCardNumber(), order.getAmount(), val, order.getUnitPrice());
+            }
+            else
+            {
+                Console.WriteLine("--------------------------------------------------- CARD NUMBER FORMAT INCORRECT FOR AGENCY {0}. Card No: {1}. Price: ${2}", order.getSender(), order.getCardNumber(), order.getUnitPrice());
+            }
+
+
 
         }
 
         public static void changePrice(Int32 price)
         {
-            
+
+            Program.onSaleFlag = 0; // static flag to handle the onsale event
             if (price < chickenPrice)
             { // a price cut 
                 if (priceCut != null)   // there is at least a subscriber
                     priceCut(price);    // emit event to subscribers
             }
+
             chickenPrice = price;
         }
 
@@ -84,33 +95,25 @@ namespace Airline_app
                 // Decide the price based on the orders
 
                 Int32 p = rng.Next(50, 200); // Generate a random price
-               // Console.WriteLine("New Price is {0}", p);
                 Airline.changePrice(p);
 
-                lock (multiCellBuffer)
+                if (multiCellBuffer.order != null)
                 {
-                    if (multiCellBuffer.order != null)
-                    {
 
-                        if (multiCellBuffer.order.getAmount() != 0)
-                        {
-                            Console.WriteLine("--------------------------------------------------- Airline is Processing Order for Travel Agency {0}", multiCellBuffer.order.getSender());
-                           // Thread link = new Thread(() => Airline.orderProcessing(multiCellBuffer.order));
-                           // link.Start();
-
-                        }
-                        multiCellBuffer.getOneCell();
-                    }
-                    multiCellBuffer.order = null;
+                    Console.WriteLine("--------------------------------------------------- Airline is Processing Order for Travel Agency {0}", multiCellBuffer.order.getSender());
+                    
+                    Thread link = new Thread(() => Airline.orderProcessing(multiCellBuffer.order, multiCellBuffer.price)); //Generate new order processing thread
+                    link.Start();
+                    multiCellBuffer.getOneCell();
                 }
-                
+
             }
         }
     }
 
-    public class TravelAgency //Producer
+    public class TravelAgency //Travel Agency Class
     {
-        int onSaleFlag = 0;
+
         private MultiCellBuffer multiCellBuffer;
         static Random rng = new Random();
         public TravelAgency(MultiCellBuffer multiCellBuffer)
@@ -118,67 +121,109 @@ namespace Airline_app
             this.multiCellBuffer = multiCellBuffer;
         }
 
+        public void createOrder(Order order, int price, string threadName)
+        {
+            //Creatint specific orders based off of thread name
+            if (threadName.Equals("1"))
+            {
+                Console.WriteLine("--------------------------------------------------- Travel Agency {0} is Attempting to make an order for the price {1}", threadName, price);
+                order.setAmount(rng.Next(1, 3));
+                order.setCardNumber(rng.Next(4000, 7000));
+                order.setSender(threadName);
+                order.setUnitPrice((double)price);
+                multiCellBuffer.setOneCell(order);
+            }
+            else if (threadName.Equals("2"))
+            {
+                Console.WriteLine("--------------------------------------------------- Travel Agency {0} is Attempting to make an order for the price {1}", threadName, price);
+                order.setAmount(rng.Next(2, 4));
+                order.setCardNumber(rng.Next(4000, 7000));
+                order.setSender(threadName);
+                order.setUnitPrice((double)price);
+                multiCellBuffer.setOneCell(order);
+            }
+            else if (threadName.Equals("3"))
+            {
+                Console.WriteLine("--------------------------------------------------- Travel Agency {0} is Attempting to make an order for the price {1}", threadName, price);
+                order.setAmount(rng.Next(1, 4));
+                order.setCardNumber(rng.Next(4000, 7000));
+                order.setSender(threadName);
+                order.setUnitPrice((double)price);
+                multiCellBuffer.setOneCell(order);
+            }
+            else if (threadName.Equals("4"))
+            {
+                Console.WriteLine("--------------------------------------------------- Travel Agency {0} is Attempting to make an order for the price {1}", threadName, price);
+                order.setAmount(rng.Next(1, 5));
+                order.setCardNumber(rng.Next(4000, 7000));
+                order.setSender(threadName);
+                order.setUnitPrice((double)price);
+                multiCellBuffer.setOneCell(order);
+            }
+            else if (threadName.Equals("5"))
+            {
+                Console.WriteLine("--------------------------------------------------- Travel Agency {0} is Attempting to make an order for the price {1}", threadName, price);
+                order.setAmount(rng.Next(1, 6));
+                order.setCardNumber(rng.Next(4000, 7000));
+                order.setSender(threadName);
+                order.setUnitPrice((double)price);
+                multiCellBuffer.setOneCell(order);
+            }
+        }
+
         public void travelAgencyFunc()
         {
-            //object box = onSaleFlag;   
+
             Order order = new Order();
-            //for starting thread
+
             Airline airline = new Airline(multiCellBuffer);
-            for (Int32 i = 0; i < 20; i++) //iterate per each thread so store2 will go n number of times
+            for (Int32 i = 0; i < 20; i++)
             {
+
                 Thread.Sleep(500);
+
                 Int32 p = airline.getPrice();
-               
                 Console.WriteLine("Travel Agency{0} has everyday low price: ${1} each", Thread.CurrentThread.Name, p);
 
-                lock (multiCellBuffer)
-                {
-                    if (onSaleFlag == 1)
-                    {
 
-                        Console.WriteLine("--------------------------------------------------- Travel Agency {0} is Making an order for price {1}", Thread.CurrentThread.Name, p);
-                        order.setAmount(2);
-                        order.setCardNumber(rng.Next(4000, 7000));
-                        order.setSender(Thread.CurrentThread.Name);
-                        multiCellBuffer.setOneCell(order);
-                        onSaleFlag = 0;
-                      //  Monitor.Pulse(multiCellBuffer);
-                    }
-                }  
+                if (Program.onSaleFlag == 1)
+                {
+
+                    multiCellBuffer.price = p;
+                    createOrder(order, multiCellBuffer.price, Thread.CurrentThread.Name);  //Generate order object if flash sale occurs
+
+                }
 
             }
 
         }
 
+
         public void ticketsOnSale(Int32 p)
         {  // Event handler
-            //create order object to send all values through a buffer for the airline to process
-            object box = onSaleFlag;
+
             Console.WriteLine("Travel Agency{0} tickets are on sale: as low as ${1} each", Thread.CurrentThread.Name, p);
-           // lock (multiCellBuffer)
-           // {
-                onSaleFlag = 1;
-           //     Monitor.Wait(multiCellBuffer);
-           // }
-             
+
+            Program.onSaleFlag = 1;  //Set flag to 1 if sale occurs to communicate with travel agency
+
         }
     }
 
-    //order processing class/ processorder method - check credit card method and calculate method/ register credit card array
 
-    public class Order
+    public class Order //Order class
     {
         private string senderId;
         private int cardNo;
         private int amount;
         private double unitPrice;
 
-        public void setSender(string senderId) //thread name
+        //Basic getters and setters
+        public void setSender(string senderId)
         {
             this.senderId = senderId;
         }
 
-        public void setCardNumber(int num) // numbers between 5000 - 7000
+        public void setCardNumber(int num)
         {
             this.cardNo = num;
         }
@@ -202,54 +247,71 @@ namespace Airline_app
         {
             return amount;
         }
+
+        public int getCardNumber()
+        {
+            return cardNo;
+        }
+
+        public double getUnitPrice()
+        {
+            return unitPrice;
+        }
     }
 
-    public class MultiCellBuffer
+    public class MultiCellBuffer //Multicell buffer class
     {
-        
+
         public Order order;
         int counter = 0;
+
+        public int price { get; set; }
         public MultiCellBuffer()
         {
 
         }
-        
+
         public void setOneCell(Order order)
         {
-            lock (order)
-            {
-                if (Program._pool.WaitOne())
-                {
-                    this.order = order;
-                    Console.WriteLine("---------------- ORDER POOL IS NOW OCCUPIED BY TRAVEL AGENCY {0} ------------------", Thread.CurrentThread.Name); //Should increase semaphore by 1
-                  //  counter++;
-                }
 
+            lock (this)
+            {
+                //Call waitOne if counter is less than amout of cells avaliable
+                if (counter < 2)
+                {
+                    
+                    Program._pool.WaitOne();
+                    this.order = order;
+                    counter++;
+                    Monitor.Wait(this);
+                }
+                else
+                {
+                    Monitor.Pulse(this);
+                }
             }
 
         }
 
         public void getOneCell()
         {
-            lock (order)
+            lock (this)
             {
-             //   if(counter <= 1)
-              //  {
-                 //   counter--;
-                    Console.WriteLine("---------------- RELEASING SEMAPHORE {0} ------------------", Program._pool.Release());
-                    Console.WriteLine("--------------------------------------------------- AIRLINE HAS RECEIVED THE ORDER FOR TRAVEL AGENCY {0}", order.getSender());
-                    
-                   // Monitor.Pulse(order);
-                //}
-                
+                //Releasing pool
+                if (order != null && counter > 0)
+                {
+                    Monitor.Pulse(this);
+                    Program._pool.Release();
+                    counter--;
 
+                }
+                else
+                {
+                    Monitor.Pulse(this);
+                }
             }
-            //return order;
-
-
         }
 
-        
     }
 
 
